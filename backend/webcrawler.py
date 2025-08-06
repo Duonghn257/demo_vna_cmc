@@ -1,16 +1,19 @@
 import asyncio
 from openai import responses
+from playwright.sync_api import Locator
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
-from playwright.async_api import async_playwright
-
+from playwright.async_api import async_playwright, Page, Browser
 import pandas as pd
 from urllib.parse import urljoin, urlparse
 import time
 from typing import Dict, List, Optional
-from .llm import spelling_check
+from .llm import spelling_check, Result
 from .helpers import (
+    get_common_text_elements,
+    find_dumb_text_batches,
+    Element,
     highlight_locator, 
     unhighlight_locator, 
     get_font_size, 
@@ -27,6 +30,9 @@ class WebCrawler:
         self.playwright = None
         self.browser = None
         self.page = None
+        self._locators_element: List[Element]
+        self._text_batches: List[str]
+        self._correction_text: List[Result]
 
     async def check_url_availability(self, url: str) -> Dict[str, any]:
         """Check if URL is accessible"""
@@ -75,13 +81,56 @@ class WebCrawler:
         })
         
         await self.page.goto(url, wait_until="domcontentloaded")
-        await close_cookies(self.page)
-        await close_popup_if_present(self.page)
+        # await close_cookies(self.page)
+        # await close_popup_if_present(self.page)
 
         html_content = await self.page.content()
         self.soup = BeautifulSoup(html_content, 'html.parser')
         self.url = url
+
+        await self.cleanup()
         return True
+
+    async def highlight_incorrect_text(self) -> pd.DataFrame:
+
+        self.playwright = await async_playwright().start()
+        self.browser = await self.playwright.chromium.launch(headless=False)
+        self.page = await self.browser.new_page()
+
+        # Set user agent and other headers
+        await self.page.set_extra_http_headers({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        })
+        
+        await self.page.goto(self.url, wait_until="domcontentloaded")
+
+        self._locators_element = await get_common_text_elements(page=self.page)
+        self._text_batches = await find_dumb_text_batches(self._locators_element, MAX_TOKENS=100000)
+        self._correction_text = await spelling_check(self._text_batches[0])
+        raw_text = []
+        edited_text = []
+
+        for res in self._correction_text:
+            content, idx = res.content, res.idx
+
+            print(self._locators_element[idx].locator)
+            await highlight_locator(self._locators_element[idx].locator)
+
+            raw_text.append(self._locators_element[idx].text)
+            edited_text.append(content)
+        
+        df = pd.DataFrame({
+            'Wrong Text': raw_text,
+            'Correct Text Suggest': edited_text
+        })
+
+        # await self.cleanup()
+        return df
+
+    async def unhighlight_incorrect_text(self):
+        for res in self._correction_text:
+            content, idx = res.content, res.idx
+            await unhighlight_locator(self._locators_element[idx].locator)       
 
     async def crawl_with_requests(self, url: str) -> bool:
         """Crawl website using aiohttp + BeautifulSoup for static sites (async)"""
@@ -301,55 +350,23 @@ class WebCrawler:
         except Exception:
             pass
 
-from playwright.async_api import Page
-async def get_locators_with_text(page: Page):
-        """
-        Tìm và trả về tất cả các Locator trên trang mà có chứa text (textContent không rỗng).
-        
-        Args:
-            page (Page): Trang Playwright.
-
-        Returns:
-            List[Locator]: Danh sách các Locator có chứa text trên trang.
-        """
-        all_locators = page.locator("*")
-        count = await all_locators.count()
-        print(f"Tìm thấy {count} phần tử trên trang.")
-        locators_with_text = []
-        for i in range(count):
-            elem_locator = all_locators.nth(i)
-            # print(elem_locator)
-            # Lấy textContent của phần tử
-            
-            try:
-                text_content = await elem_locator.evaluate("el => el.textContent")
-                # print(text_content)
-            except Exception as e:
-                text_content = None
-            
-            
-            if text_content and text_content.strip():
-                locators_with_text.append(elem_locator)
-            #     # await highlight_locator(elem_locator)
-            #     # print(elem_locator.all_text_contents())
-            #     # sz = get_font_size(elem_locator)
-        print(f"Tìm thấy {len(locators_with_text)} phần tử có chứa text.")
-        return locators_with_text
-
 async def main():
     
-    url = "https://www.vietnamairlines.com/vn/vi/travel-information/check-in/online-check-in"
+    url = "https://duonghn257.github.io/demo_vna_cmc/"
     crawler = WebCrawler()
     # response = await crawler.check_url_availability(url)
     check = await crawler.crawl_with_playwright(url)
-    
-    locats = await get_locators_with_text(crawler.page)
-    # for i, loc in enumerate(locats):
-    #     print(f"locator number {i}:\n", loc)
+    # print(crawler._locators_element)
+    df = await crawler.highlight_incorrect_text()
+    print(df)
+    # if check:
+    #     for batch in crawler._text_batches:
+    #         res = spelling_check(batch)
+        # res = spelling_check(crawler._text_batches)
+        # print(res)
+        # print(len(data))
     input("Nhấn Enter để đóng trình duyệt...")
     await crawler.cleanup()
 
-
 if __name__ == "__main__":
-    
     asyncio.run(main())

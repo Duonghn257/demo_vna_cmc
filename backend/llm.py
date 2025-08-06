@@ -1,47 +1,70 @@
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
 from dotenv import load_dotenv
 from pydantic import BaseModel
 import os
 
 load_dotenv(override=True)
 
-client = OpenAI(
+client = AsyncOpenAI(
     api_key=os.getenv("GOOGLE_API_KEY"),
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
 )
 
 class Result(BaseModel):
     content: str
-    check: bool
+    idx: int
 
-def spelling_check(text: str) -> Result:
+from typing import List
+import json
+
+async def spelling_check(text: str) -> List[Result]:
     """
-    This function checks the spelling of the input text and rewrites it if there are any spelling mistakes.
-    Returns a Result object with the corrected content and a boolean indicating if changes were made.
-    The 'check' field is True if the text was already correct (no changes needed), and False if corrections were made.
+    Perform spelling check on a list of JSON objects in the following format:
+    [
+        {"idx": 1, "text": "text string to check here"},
+        ...
+    ]
+    If the text is incorrect, correct its spelling, then add {'content': <corrected_text>, 'idx': <idx>} to the result list.
+    Returns a list of Result objects for all corrected items (if no correction needed, skip).
     """
     model = "gemini-2.5-flash"
+    # print(type(text))
+    # Parse the input text as a list of dicts
+
     system_prompt = (
         "You are a spelling and grammar assistant. "
-        "Check the user's text for spelling mistakes. "
-        "If the text is already correct, return it as is and set 'check' to true. "
-        "If there are any spelling or grammar mistakes, rewrite the text with correct spelling and grammar, and set 'check' to false. "
-        "Respond in the following JSON format:\n"
-        "{'content': '<corrected or original text>', 'check': <true if nothing has to change, false if spelling is not correct>}"
+        "You will receive a list of objects, each with an 'idx' and a 'text' field. "
+        "For each object, check the 'text' for spelling and grammar mistakes in Vietnamese or English. "
+        "If the text is correct, do nothing. "
+        "If the text is incorrect, rewrite it with correct spelling and grammar. "
+        "Return a JSON array of objects, each with 'content' (the corrected text) and 'idx' (the original idx)"
+        "for only those items that required correction and must match List[Result] format."
+        "Example output:\n"
+        "[{'content': 'corrected text', 'idx': 1}, ...]"
     )
-    response = client.chat.completions.parse(
+
+    user_prompt = (
+        "Check the following list for spelling and grammar mistakes. "
+        "Return only the corrected items as described above.\n"
+        f"{text}"
+    )
+
+    response = await client.chat.completions.create(
         model=model,
         messages=[
             {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": text,
-            }
+            {"role": "user", "content": user_prompt}
         ],
-        response_format=Result
+        response_format={"type": "json_object"},
     )
-    return response.choices[0].message.content
 
+    # After receiving the response
+    content_str = response.choices[0].message.content
+    corrected_results = [Result(**item) for item in json.loads(content_str)]
+    
+    return corrected_results
+
+    
 def main():
     text= "Tôi là Nguyễn Hoangfd Dương, sinh năm 2000"
     response = spelling_check(text)

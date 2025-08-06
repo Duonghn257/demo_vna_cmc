@@ -62,7 +62,7 @@ async def main():
     if st.button("🔍 Check & Crawl Website", type="primary"):
         if url:
             crawler = st.session_state.crawler
-            
+            print(crawler)
             # Check URL availability
             with st.spinner("Checking URL availability..."):
                 url_status = await crawler.check_url_availability(url)
@@ -102,12 +102,12 @@ async def main():
         st.markdown("---")
         st.subheader("📋 Select Content to Display")
         
-        crawler = st.session_state.crawler
-        
+        mycrawler = st.session_state.crawler
+
         # Content selection
         content_options = st.multiselect(
             "Choose what to extract and display:",
-            ["Page Content", "Check IMG", "Images", "Links", "Tables", "URL Info"],
+            ["Page Content", "Spell Check", "Images", "Links", "Tables", "URL Info"],
             default=["Page Content"]
         )
         
@@ -116,7 +116,7 @@ async def main():
             
             if option == "Page Content":
                 with st.spinner("Extracting page content..."):
-                    content = await crawler.extract_page_content()
+                    content = await mycrawler.extract_page_content()
                 
                 col1, col2 = st.columns([2, 1])
                 with col1:
@@ -133,7 +133,7 @@ async def main():
                             st.write(f"{heading['level']}: {heading['text']}")
             
             elif option == "Images":
-                images = await crawler.extract_images()
+                images = await mycrawler.extract_images()
                 st.write(f"Found {len(images)} images")
                 
                 if images:
@@ -147,19 +147,13 @@ async def main():
                         except:
                             st.write(f"Could not display image: {img['src']}")
 
-            elif option == "Check IMG":
-                st.write("Image Analysis")
-                display_images_from_folder("./images")
-                await crawler.screenshots()
-
-                # try:
-                #     st.session_state.crawler.cleanup()
-                # except:
-                #     pass
-
+            elif option == "Spell Check":
+                st.write("Spelling Suggestion Table")
+                table = await mycrawler.highlight_incorrect_text()
+                st.dataframe(table, use_container_width=True)
 
             elif option == "Links":
-                links = await crawler.extract_links()
+                links = await mycrawler.extract_links()
                 st.write(f"Found {len(links)} links")
                 
                 if links:
@@ -167,7 +161,8 @@ async def main():
                     st.dataframe(df_links, use_container_width=True)
             
             elif option == "Tables":
-                tables = await crawler.extract_tables()
+                tables = await mycrawler.extract_tables()
+                print(tables)
                 st.write(f"Found {len(tables)} tables")
                 
                 for i, table in enumerate(tables):
@@ -176,17 +171,11 @@ async def main():
             
             elif option == "URL Info":
                 st.json({
-                    "crawled_url": crawler.url,
-                    "domain": urlparse(crawler.url).netloc,
-                    "scheme": urlparse(crawler.url).scheme,
-                    "path": urlparse(crawler.url).path
+                    "crawled_url": mycrawler.url,
+                    "domain": urlparse(mycrawler.url).netloc,
+                    "scheme": urlparse(mycrawler.url).scheme,
+                    "path": urlparse(mycrawler.url).path
                 })
-    
-    # # Cleanup on app close
-    # try:
-    #     st.session_state.crawler.cleanup()
-    # except:
-    #     pass
 
 def test(url: str):
     from bs4 import BeautifulSoup

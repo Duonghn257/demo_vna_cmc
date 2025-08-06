@@ -1,7 +1,9 @@
-from playwright.sync_api import sync_playwright, Page, Locator
-from typing import List
+from playwright.async_api import async_playwright, Page, Locator
+from typing import List, Optional, Tuple
+from dataclasses import dataclass, field
 import os
 import tiktoken
+import json
 
 def num_tokens_from_model(string: str, model_name: str = "gpt-4o") -> int:
     """Returns the number of tokens in a text string for a specific model."""
@@ -14,6 +16,140 @@ DELAY_BETWEEN_SHOTS = 0.5  # Seconds to wait after scrolling (helps with lazy lo
 COOKIE_BUTTON_XPATH = "//*[@id='cookie-agree']"
 TIMEOUT = 5000
 CLOSE_ADS_XPATH = """//*[@class="ins-close-button"]"""
+
+@dataclass
+class Element:
+    idx: int
+    text: str
+    locator: Optional[Locator] = None  # Optional, initialized to None
+    # token_num: int
+
+async def find_dumb_text_batches(elements: List[Element], MAX_TOKENS: int) -> List[str]:
+    """
+    Chia danh sách Element thành các chuỗi JSON (batch),
+    mỗi batch có số token <= MAX_TOKENS.
+
+    Returns:
+        List[str]: Danh sách các chuỗi JSON, mỗi chuỗi là một batch hợp lệ.
+    """
+    if not elements:
+        return []
+
+    batches = []  # Lưu các chuỗi JSON batch
+    current_batch = []  # Danh sách dict tạm
+    current_json = "[]"  # JSON string hiện tại
+    current_tokens = num_tokens_from_model(current_json)
+
+    for elem in elements:
+        # Thử thêm phần tử vào batch hiện tại
+        temp_batch = current_batch + [{"idx": elem.idx, "text": elem.text}]
+        temp_json = json.dumps(temp_batch, ensure_ascii=False, indent=2)
+        temp_tokens = num_tokens_from_model(temp_json)
+
+        if temp_tokens <= MAX_TOKENS:
+            # Vẫn trong giới hạn → thêm vào batch hiện tại
+            current_batch = temp_batch
+            current_json = temp_json
+            current_tokens = temp_tokens
+        else:
+            # ❌ Vượt giới hạn
+            if not current_batch:
+                # 🚨 Ngay phần tử đầu tiên đã quá lớn
+                print(f"[⚠️] Bỏ qua phần tử idx={elem.idx} - quá lớn để nằm trong batch nào (text: {elem.text[:50]}...)")
+                continue  # Bỏ qua, không thể xử lý
+
+            # ✅ Đóng batch hiện tại
+            batches.append(current_json)
+            print(f"[✅] Batch đóng: {current_tokens} tokens")
+
+            # Bắt đầu batch mới với phần tử hiện tại
+            current_batch = [{"idx": elem.idx, "text": elem.text}]
+            current_json = json.dumps(current_batch, ensure_ascii=False, indent=2)
+            current_tokens = num_tokens_from_model(current_json)
+
+    # Đóng batch cuối cùng nếu còn
+    if current_batch:
+        batches.append(current_json)
+        print(f"[✅] Batch cuối: {current_tokens} tokens")
+
+    print(f"[🎉] Tổng cộng: {len(batches)} batch được tạo.")
+    return batches
+
+async def get_common_text_elements(page: Page) -> List[Element]:
+    """
+    Lấy các phần tử thường chứa text nhỏ, có ý nghĩa.
+    Loại bỏ div/button chung chung, nhưng thêm lại các locator đặc biệt.
+    """
+    # 1. Các selector an toàn, thường chứa text nhỏ
+    base_selectors = [
+        "p", "span", "a", 
+        "h1", "h2", "h3", "h4", "h5", "h6",
+        "li", "label", "small", "strong", "em", "i", "b", "u",
+        "td", "th", "cite", "figcaption", "mark", "time"
+    ]
+
+    elements: List[Element] = []
+
+    cnt = 0
+    # 2. Duyệt các selector cơ bản
+    for sel in base_selectors:
+        locator = page.locator(sel)
+        count = await locator.count()
+
+        for i in range(count):
+            elem = locator.nth(i)
+            try:
+                text = await elem.inner_text()  # inner_text() sạch hơn textContent
+                text = text.strip()
+                if text:
+                    elements.append(Element(
+                        idx = cnt,
+                        locator = elem,
+                        text = text,
+                        # token_num = num_tokens_from_model(text)
+                    ))
+                    cnt+=1
+            except Exception as e:
+                continue  # Bỏ qua nếu lỗi (ví dụ: element detached)
+
+    # 3. Thêm các locator đặc biệt (mặc dù là div, nhưng quan trọng)
+    special_locators = [
+        "div.logo-text",                    # ✅ Bạn muốn cái này
+        "div.logo-subtitle",
+        "button.language-selector",
+        "div.skypriority-logo"
+    ]
+
+    for sel in special_locators:
+        locator = page.locator(sel)
+        count = await locator.count()
+        for i in range(count):
+            elem = locator.nth(i)
+            try:
+                text = await elem.inner_text()
+                text = text.strip()
+                if text:
+                    elements.append(Element(
+                        idx = cnt,
+                        locator = elem,
+                        text = text,
+                        # token_num = num_tokens_from_model(text)
+                    ))
+                    cnt+=1
+            except Exception as e:
+                continue
+
+    # 4. Loại bỏ trùng lặp (dùng text + selector để xác định trùng)
+    # seen = set()
+    # unique_elements = []
+    # for el in elements:
+    #     key = (el["text"], el["selector"])
+    #     if key not in seen:
+    #         seen.add(key)
+    #         unique_elements.append(el)
+
+    # print(f"✅ Tìm thấy {len(unique_elements)} phần tử có text (sau khi lọc và thêm đặc biệt).")
+    return elements
 
 async def close_cookies(page: Page):
     try:
@@ -78,42 +214,46 @@ async def highlight_locator(locator: Locator):
     """
     Highlight một element bằng cách thêm một đường viền màu đỏ.
     """
-    await locator.evaluate('''
-        element => {
-        const style = window.getComputedStyle(element);
-        const font_size = style.fontSize;
-        element.style.border = "2px solid red";
-        element.style.backgroundColor = "yellow";
-        element.style.transition = "border 0.2s, background-color 0.2s";
-        element.style.position = "relative";
-        // Thêm một class đặc biệt để áp dụng ::after
-        element.classList.add('ai-highlight-after');
-        // Tạo hoặc cập nhật một style tag cho ::after nếu chưa có
-        if (!document.getElementById('ai-highlight-after-style')) {
-            const style = document.createElement('style');
-            style.id = 'ai-highlight-after-style';
-            style.textContent = `
-                .ai-highlight-after::after {
-                    content: attr(data-ai-text);
-                    position: absolute;
-                    right: 0;
-                    top: 0px;
-                    background: green;
-                    color: #fff;
-                    font-size: 12px;
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                    border: 1px solid #aaa;
-                    
-                    z-index: 9999999;
-                    white-space: pre;
-                }
-            `;
-            document.head.appendChild(style);
-        }
-        // Gán textContent vào thuộc tính data-ai-text để ::after sử dụng
-        element.setAttribute('data-ai-text', font_size);
-    }''')
+    if locator:
+        await locator.evaluate('''
+            element => {
+            const style = window.getComputedStyle(element);
+            const font_size = style.fontSize;
+            element.style.border = "2px solid red";
+            element.style.backgroundColor = "yellow";
+            element.style.transition = "border 0.2s, background-color 0.2s";
+            element.style.position = "relative";
+            element.style.color = "black"; // Change text color inside border to black
+            // Thêm một class đặc biệt để áp dụng ::after
+            element.classList.add('ai-highlight-after');
+            // Tạo hoặc cập nhật một style tag cho ::after nếu chưa có
+            if (!document.getElementById('ai-highlight-after-style')) {
+                const style = document.createElement('style');
+                style.id = 'ai-highlight-after-style';
+                style.textContent = `
+                    .ai-highlight-after::after {
+                        content: attr(data-ai-text);
+                        position: absolute;
+                        right: 0;
+                        top: 0px;
+                        background: green;
+                        color: #fff;
+                        font-size: 12px;
+                        padding: 2px 6px;
+                        border-radius: 4px;
+                        border: 1px solid #aaa;
+                        
+                        z-index: 9999999;
+                        white-space: pre;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            // Gán textContent vào thuộc tính data-ai-text để ::after sử dụng
+            element.setAttribute('data-ai-text', font_size);
+        }''')
+
+    return None
 
 async def unhighlight_locator(locator: Locator):
     """
