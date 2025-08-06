@@ -1,0 +1,9 @@
+.env
+/notebooks
+/test
+/tests
+test.py
+test.ipynb
+/images
+__pycache__
+data

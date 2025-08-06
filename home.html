@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dịch vụ ưu tiên tại sân bay SkyPriority - Vietnam Airlines</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        /* Header Notification Bar */
+        .notification-bar {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            color: white;
+            padding: 10px 0;
+            font-size: 14px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .notification-bar::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .notification-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .notification-icon {
+            width: 20px;
+            height: 20px;
+            border: 2px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .close-btn {
+            position: absolute;
+            right: 20px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 3px;
+            transition: background 0.3s;
+        }
+
+        .close-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 80px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #f39c12, #e74c3c);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .logo-text {
+            color: #2c5aa0;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .logo-subtitle {
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 30px;
+        }
+
+        .nav-menu a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            padding: 10px 0;
+            position: relative;
+            transition: color 0.3s;
+        }
+
+        .nav-menu a:hover {
+            color: #2c5aa0;
+        }
+
+        .nav-menu a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: #2c5aa0;
+            transition: width 0.3s;
+        }
+
+        .nav-menu a:hover::after {
+            width: 100%;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .language-selector {
+            background: none;
+            border: 1px solid #ddd;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .language-selector:hover {
+            border-color: #2c5aa0;
+            color: #2c5aa0;
+        }
+
+        /* Breadcrumb */
+        .breadcrumb {
+            background: #f8f9fa;
+            padding: 15px 0;
+        }
+
+        .breadcrumb-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .breadcrumb-nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .breadcrumb-nav a {
+            color: #2c5aa0;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .breadcrumb-nav a:hover {
+            color: #1e3a5f;
+        }
+
+        .breadcrumb-separator {
+            color: #ccc;
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .page-title {
+            font-size: 36px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .page-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 0;
+            width: 60px;
+            height: 4px;
+            background: linear-gradient(135deg, #f39c12, #e74c3c);
+            border-radius: 2px;
+        }
+
+        /* Hero Section */
+        .hero-section {
+            background: linear-gradient(135deg, rgba(44, 90, 160, 0.9), rgba(30, 58, 95, 0.9)), url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600"><rect fill="%23f0f8ff" width="1200" height="600"/><g fill="%23e6f3ff"><circle cx="200" cy="150" r="80"/><circle cx="800" cy="250" r="120"/><circle cx="600" cy="400" r="100"/><circle cx="1000" cy="100" r="60"/></g></svg>');
+            background-size: cover;
+            background-position: center;
+            border-radius: 15px;
+            padding: 60px;
+            margin-bottom: 60px;
+            color: white;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, rgba(44, 90, 160, 0.1), rgba(243, 156, 18, 0.1));
+            animation: gradientShift 6s ease-in-out infinite alternate;
+        }
+
+        @keyframes gradientShift {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-title {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hero-description {
+            font-size: 20px;
+            margin-bottom: 30px;
+            opacity: 0.9;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: bold;
+            text-align: center;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #f39c12, #e74c3c);
+            color: white;
+            box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(243, 156, 18, 0.6);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-secondary:hover {
+            background: white;
+            color: #2c5aa0;
+        }
+
+        /* Content Sections */
+        .content-section {
+            margin-bottom: 60px;
+        }
+
+        .section-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c5aa0;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .section-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #f39c12, #e74c3c);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .benefit-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border: 1px solid #f0f0f0;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .benefit-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, #f39c12, #e74c3c);
+        }
+
+        .benefit-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+
+        .benefit-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .benefit-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .benefit-description {
+            color: #666;
+            line-height: 1.8;
+        }
+
+        /* SkyPriority Highlight */
+        .skypriority-highlight {
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            color: white;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            margin: 60px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .skypriority-highlight::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            animation: float 20s linear infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translate(-50%, -50%); }
+            100% { transform: translate(-30%, -30%); }
+        }
+
+        .skypriority-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .skypriority-logo {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .skypriority-text {
+            font-size: 18px;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                height: auto;
+                padding: 20px;
+            }
+
+            .nav-menu {
+                flex-direction: column;
+                gap: 15px;
+                margin: 20px 0;
+            }
+
+            .hero-section {
+                padding: 40px 20px;
+                text-align: center;
+            }
+
+            .hero-title {
+                font-size: 32px;
+            }
+
+            .hero-description {
+                font-size: 16px;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .benefits-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .page-title {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Notification Bar -->
+    <div class="notification-bar">
+        <div class="notification-content">
+            <div class="notification-icon">!</div>
+            <span>(1) 14 Tháng 5 2025, 09:00 GMT+7: Vietnam Airlines chính thức chuyển toàn bộ chuyến bay nội địa sang nhà ga T3 Tân Sơn Nhất từ ngày 17/5</span>
+            <button class="close-btn" onclick="this.parentElement.parentElement.style.display='none'">×</button>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">VN</div>
+                <div>
+                    <div class="logo-text">Vietnam Airlines</div>
+                    <div class="logo-subtitle">SÂI CÁNH VƯƠN CAO</div>
+                </div>
+            </div>
+            <nav>
+                <ul class="nav-menu">
+                    <li><a href="#planning">Lên kế hoạch</a></li>
+                    <li><a href="#info">Thông tin hành trình</a></li>
+                    <li><a href="#shopping">Mua vé & Sản phẩm khác</a></li>
+                    <li><a href="#lotusmiles">Lotusmiles</a></li>
+                </ul>
+            </nav>
+            <div class="header-actions">
+                <button class="language-selector">VIETNAM - TIẾNG VIỆT</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+        <div class="breadcrumb-content">
+            <nav class="breadcrumb-nav">
+                <a href="#">🏠</a>
+                <span class="breadcrumb-separator">›</span>
+                <a href="#">Thông tin hành trình</a>
+                <span class="breadcrumb-separator">›</span>
+                <a href="#">Thông tin sân bay</a>
+                <span class="breadcrumb-separator">›</span>
+                <span>Dịch vụ ưu tiên tại sân bay SkyPriority</span>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <h1 class="page-title">Dịch vụ ưu tiên tại sân bay SkyPriority</h1>
+
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-content">
+                <h2 class="hero-title">Trải nghiệm hạng thương gia ngay tại sân bay</h2>
+                <p class="hero-description">Tận hưởng dịch vụ ưu tiên toàn diện với SkyPriority - từ check-in nhanh chóng đến lên máy bay đầu tiên, mang đến cho bạn hành trình thoải mái và đẳng cấp.</p>
+                <div class="cta-buttons">
+                    <a href="#benefits" class="btn btn-primary">Khám phá quyền lợi</a>
+                    <a href="#register" class="btn btn-secondary">Đăng ký ngay</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- SkyPriority Highlight -->
+        <section class="skypriority-highlight">
+            <div class="skypriority-content">
+                <div class="skypriority-logo">SkyPriority</div>
+                <p class="skypriority-text">bao gồm các dịch vụ mặt đất cao cấp nhất dành cho hành khách khi bay cùng Vietnam Airlines.</p>
+            </div>
+        </section>
+
+        <!-- Benefits Section -->
+        <section class="content-section" id="benefits">
+            <h2 class="section-title">
+                <div class="section-icon">★</div>
+                Đối tượng được hưởng quyền lợi SkyPriority
+            </h2>
+            <p style="font-size: 16px; color: #666; margin-bottom: 30px;">SkyPriority là chương trình cao cấp nhất dành cho hành khách khi bay cùng Vietnam Airlines. SkyPriority bao gồm các quyền ưu tiên dành riêng cho hành khách khi thực hiện chuyến bay do Vietnam Airlines khai thác hoặc chuyến bay do liên minh SkyTeam khai thác.</p>
+            
+            <div class="benefits-grid">
+                <div class="benefit-card">
+                    <div class="benefit-icon">🎫</div>
+                    <h3 class="benefit-title">Check-in Ưu tiên</h3>
+                    <p class="benefit-description">Làm thủ tục check-in nhanh chóng tại quầy dành riêng, tiết kiệm thời gian và tránh xếp hàng dài.</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">🛂</div>
+                    <h3 class="benefit-title">Kiểm tra An ninh Ưu tiên</h3>
+                    <p class="benefit-description">Được ưu tiên qua cửa kiểm tra an ninh dành riêng, rút ngắn thời gian chờ đợi tại sân bay.</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">✈️</div>
+                    <h3 class="benefit-title">Lên máy bay Đầu tiên</h3>
+                    <p class="benefit-description">Ưu tiên lên máy bay trước các hành khách khác, thoải mái sắp xếp hành lý và chọn chỗ ngồi.</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">🧳</div>
+                    <h3 class="benefit-title">Xử lý Hành lý Ưu tiên</h3>
+                    <p class="benefit-description">Hành lý được ưu tiên xử lý và trả về đầu tiên tại băng chuyền, giúp bạn rời sân bay nhanh chóng.</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">🏆</div>
+                    <h3 class="benefit-title">Phòng chờ Hạng thương gia</h3>
+                    <p class="benefit-description">Thư giãn tại phòng chờ cao cấp với dịch vụ ăn uống, wifi miễn phí và không gian yên tĩnh.</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">🌟</div>
+                    <h3 class="benefit-title">Hỗ trợ 24/7</h3>
+                    <p class="benefit-description">Đội ngũ chăm sóc khách hàng chuyên nghiệp sẵn sàng hỗ trợ bạn mọi lúc, mọi nơi.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Eligibility Section -->
+        <section class="content-section">
+            <h2 class="section-title">
+                <div class="section-icon">👤</div>
+                Các quyền lợi SkyPriority
+            </h2>
+            <div class="benefits-grid">
+                <div class="benefit-card">
+                    <div class="benefit-icon">💎</div>
+                    <h3 class="benefit-title">Hành khách Hạng thương gia</h3>
+                    <p class="benefit-description">Tất cả hành khách bay hạng thương gia (Business Class) tự động được hưởng đầy đủ quyền lợi SkyPriority.</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">🏅</div>
+                    <h3 class="benefit-title">Thành viên Lotusmiles Bạch kim</h3>
+                    <p class="benefit-description">Thành viên hạng Bạch kim của chương trình Lotusmiles được hưởng toàn bộ quyền lợi SkyPriority.</p>
+                </div>
+                <div class="benefit-card">
+                    <div class="benefit-icon">🥇</div>
+                    <h3 class="benefit-title">Thành viên SkyTeam Elite Plus</h3>
+                    <p class="benefit-description">Thành viên Elite Plus của liên minh SkyTeam được hưởng quyền lợi khi bay cùng Vietnam Airlines.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

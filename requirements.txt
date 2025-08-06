@@ -1,0 +1,7 @@
+streamlit 
+beautifulsoup4 
+playwright 
+pandas 
+requests 
+lxml 
+html5lib
