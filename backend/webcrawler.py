@@ -36,43 +36,43 @@ class WebCrawler:
 
     async def check_url_availability(self, url: str) -> Dict[str, any]:
         """Check if URL is accessible"""
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=False)
-            page = await browser.new_page()
-            try:
-                # Điều hướng đến URL và lấy response
-                response = await page.goto(url, wait_until="domcontentloaded")
-                # await page.wait_for_load_state("domcontentloaded")
-                
-                if response and response.status == 200:
-                    print(f"✅ URL '{url}' is available. Status: {response.status}")
-                    return {
-                        "available": True,
-                        "status_code": response.status,
-                        "final_url": response.url,
-                        "content_type": response.headers.get('content-type', 'Unknown')
-                    }
-                else:
-                    print(f"❌ URL '{url}' is not available. Status: {response.status if response else 'No response'}")
-                    return {
-                        "available": False,
-                        "status_code": response.status,
-                        "final_url": response.url,
-                        "content_type": response.headers.get('content-type', 'Unknown')
-                    }
-            except Exception as e:
-                print(f"❌ URL '{url}' is not available. Error: {e}")
+        self.playwright = await async_playwright().start()
+        self.browser = await self.playwright.chromium.launch(headless=True)
+        self.page = await self.browser.new_page()
+        
+        try:
+            # Điều hướng đến URL và lấy response
+            response = await self.page.goto(url, wait_until="domcontentloaded")
+
+            if response and response.status == 200:
+                print(f"✅ URL '{url}' is available. Status: {response.status}")
                 return {
-                        "available": False
-                    }
-            finally:
-                await browser.close()
+                    "available": True,
+                    "status_code": response.status,
+                    "final_url": response.url,
+                    "content_type": response.headers.get('content-type', 'Unknown')
+                }
+            else:
+                print(f"❌ URL '{url}' is not available. Status: {response.status if response else 'No response'}")
+                return {
+                    "available": False,
+                    "status_code": response.status,
+                    "final_url": response.url,
+                    "content_type": response.headers.get('content-type', 'Unknown')
+                }
+        except Exception as e:
+            print(f"❌ URL '{url}' is not available. Error: {e}")
+            return {
+                    "available": False
+                }
+        finally:
+            await self.cleanup()
 
     async def crawl_with_playwright(self, url: str, wait_time: int = 3) -> bool:
         """Crawl website using Playwright for JavaScript-heavy sites"""
-        # try:
+        
         self.playwright = await async_playwright().start()
-        self.browser = await self.playwright.chromium.launch(headless=False)
+        self.browser = await self.playwright.chromium.launch(headless=True)
         self.page = await self.browser.new_page()
 
         # Set user agent and other headers
@@ -94,8 +94,8 @@ class WebCrawler:
     async def highlight_incorrect_text(self) -> pd.DataFrame:
 
         self.playwright = await async_playwright().start()
-        self.browser = await self.playwright.chromium.launch(headless=False)
-        self.page = await self.browser.new_page()
+        self.browser = await self.playwright.chromium.launch(headless=False, args=["--start-maximized"])
+        self.page = await self.browser.new_page(no_viewport=True)
 
         # Set user agent and other headers
         await self.page.set_extra_http_headers({

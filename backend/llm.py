@@ -28,12 +28,10 @@ async def spelling_check(text: str) -> List[Result]:
     Returns a list of Result objects for all corrected items (if no correction needed, skip).
     """
     model = "gemini-2.5-flash"
-    # print(type(text))
-    # Parse the input text as a list of dicts
 
     system_prompt = (
-        "You are a spelling and grammar assistant. "
-        "You will receive a list of objects, each with an 'idx' and a 'text' field. "
+        "You are a spelling and grammar assistant about an vietnam airline website."
+        "You will receive a list of objects, each with an 'idx' and a 'text' field."
         "For each object, check the 'text' for spelling and grammar mistakes in Vietnamese or English. "
         "If the text is correct, do nothing. "
         "If the text is incorrect, rewrite it with correct spelling and grammar. "

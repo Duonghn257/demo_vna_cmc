@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 import os
 import tiktoken
 import json
+import pandas as pd
+import difflib
 
 def num_tokens_from_model(string: str, model_name: str = "gpt-4o") -> int:
     """Returns the number of tokens in a text string for a specific model."""
@@ -284,9 +286,7 @@ async def get_font_size(locator: Locator) -> str:
         print(f"[Lỗi khi lấy font-size] {e}")
         return None
 
-async def highlight_elements_with_text(page: Page, user_input: str):
-
-    
+async def highlight_elements_with_text(page: Page, user_input: str):    
     """
     Tìm tất cả các phần tử có chứa văn bản giống với `user_input` (toàn phần hoặc một phần),
     sau đó highlight chúng.
@@ -317,3 +317,48 @@ async def highlight_elements_with_text(page: Page, user_input: str):
         print(elem_locator.all_text_contents())
         await highlight_locator(elem_locator)
         sz = await get_font_size(elem_locator)
+
+def highlight_both_columns_differences(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Returns a new DataFrame with:
+    - 'Wrong Text': misspelled words wrapped in ** **
+    - 'Correct Text Suggest': corrected words wrapped in ** **
+    Based on word-by-word comparison.
+    """
+    def make_both_bold(wrong_text, correct_text):
+        words_wrong = wrong_text.split()
+        words_correct = correct_text.split()
+        
+        # Align words using SequenceMatcher
+        matcher = difflib.SequenceMatcher(None, words_wrong, words_correct)
+        
+        wrong_highlighted = words_wrong.copy()
+        correct_highlighted = words_correct.copy()
+        
+        # Traverse opcodes to find differences
+        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+            if tag != 'equal':  # This includes 'replace', 'insert', 'delete'
+                # Words in wrong text (to be deleted or replaced) → highlight in red/wrong
+                for i in range(i1, i2):
+                    if i < len(wrong_highlighted):
+                        wrong_highlighted[i] = f"**{words_wrong[i]}**"
+                # Words in correct text (inserted or replacing) → highlight in correction
+                for j in range(j1, j2):
+                    if j < len(correct_highlighted):
+                        correct_highlighted[j] = f"**{words_correct[j]}**"
+        
+        return ' '.join(wrong_highlighted), ' '.join(correct_highlighted)
+    
+    # Create new DataFrame
+    result_df = df[['Wrong Text', 'Correct Text Suggest']].copy()
+    
+    # Apply function and unpack both results
+    (
+        result_df['Wrong Text'],
+        result_df['Correct Text Suggest']
+    ) = zip(*df.apply(
+        lambda row: make_both_bold(row['Wrong Text'], row['Correct Text Suggest']),
+        axis=1
+    ))
+    
+    return result_df
